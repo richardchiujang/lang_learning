@@ -36,11 +36,11 @@ class LanguagePlayer(QMainWindow):
         self._refresh_lesson_list()
 
     def _scan_noises(self):
-        """掃描 noises 資料夾中的 wav/mp3"""
+        """掃描 noises 資料夾中的 WAV 檔案 (QMediaPlayer 對 WAV 的支援最佳)"""
         if not os.path.exists(NOISE_DIR):
             os.makedirs(NOISE_DIR)
             return []
-        return [f for f in os.listdir(NOISE_DIR) if f.lower().endswith(('.wav', '.mp3'))]
+        return [f for f in os.listdir(NOISE_DIR) if f.lower().endswith('.wav')]
 
     def _init_ui(self):
         """建立介面元件"""
@@ -161,7 +161,7 @@ class LanguagePlayer(QMainWindow):
 
         control_layout.addWidget(QLabel("速度:"))
         self.combo_speed = QComboBox()
-        self.combo_speed.addItems(["0.5x", "1.0x", "1.25x", "1.5x", "2.0x", "3.0x"])
+        self.combo_speed.addItems(["0.5x","0.75x", "1.0x", "1.25x", "1.5x", "2.0x", "2.5x"])
         self.combo_speed.setCurrentText("1.0x")
         self.combo_speed.currentTextChanged.connect(self.change_speed)
         control_layout.addWidget(self.combo_speed)
@@ -195,16 +195,69 @@ class LanguagePlayer(QMainWindow):
         # 噪音音量
         control_layout.addWidget(QLabel("音量:"))
         self.slider_noise_vol = QSlider(Qt.Orientation.Horizontal)
-        self.slider_noise_vol.setRange(0, 100)
-        self.slider_noise_vol.setValue(30)
+        self.slider_noise_vol.setRange(0, 1000)
+        self.slider_noise_vol.setValue(300)
         self.slider_noise_vol.setFixedWidth(80)
         self.slider_noise_vol.valueChanged.connect(self.change_noise_volume)
         control_layout.addWidget(self.slider_noise_vol)
+
+        # 字幕控制
+        control_layout.addWidget(QLabel("| 字幕:"))
+        
+        self.btn_subtitle_en = QPushButton("EN ✓")
+        self.btn_subtitle_en.setCheckable(True)
+        self.btn_subtitle_en.setChecked(True)
+        self.btn_subtitle_en.setMaximumWidth(60)
+        self.btn_subtitle_en.setStyleSheet("""
+            QPushButton {
+                background-color: #3a3a3a;
+                border: 1px solid #555;
+                border-radius: 3px;
+                color: #e0e0e0;
+                font-size: 11px;
+            }
+            QPushButton:checked {
+                background-color: #4a90e2;
+                border-color: #4a90e2;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #4a4a4a;
+            }
+        """)
+        self.btn_subtitle_en.toggled.connect(self.toggle_subtitle_en)
+        control_layout.addWidget(self.btn_subtitle_en)
+        
+        self.btn_subtitle_zh = QPushButton("中 ✓")
+        self.btn_subtitle_zh.setCheckable(True)
+        self.btn_subtitle_zh.setChecked(True)
+        self.btn_subtitle_zh.setMaximumWidth(60)
+        self.btn_subtitle_zh.setStyleSheet("""
+            QPushButton {
+                background-color: #3a3a3a;
+                border: 1px solid #555;
+                border-radius: 3px;
+                color: #e0e0e0;
+                font-size: 11px;
+            }
+            QPushButton:checked {
+                background-color: #4a90e2;
+                border-color: #4a90e2;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #4a4a4a;
+            }
+        """)
+        self.btn_subtitle_zh.toggled.connect(self.toggle_subtitle_zh)
+        control_layout.addWidget(self.btn_subtitle_zh)
 
         right_layout.addWidget(control_panel)
         
         # 內部變數控制 slider 更新
         self.slider_being_dragged = False
+        self.show_subtitle_en = True
+        self.show_subtitle_zh = True
 
     def _init_media_players(self):
         self.player_video = QMediaPlayer()
@@ -346,12 +399,34 @@ class LanguagePlayer(QMainWindow):
                 self.player_noise.play()
 
     def change_noise_volume(self, value):
-        # 更新目標音量
-        self.noise_target_volume = value / 100.0
+        # 更新目標音量 (slider 範圍 0-1000 對應 0.0-1.0)
+        self.noise_target_volume = value / 1000.0
         # 如果目前是 100% 模式，直接更新音量，否則等待下一次循環更新
         ratio_text = self.combo_noise_ratio.currentText()
         if ratio_text == "100% (持續)":
              self.audio_noise.setVolume(self.noise_target_volume)
+
+    def toggle_subtitle_en(self, checked):
+        """切換英文字幕"""
+        self.show_subtitle_en = checked
+        self.btn_subtitle_en.setText("EN ✓" if checked else "EN ✗")
+        # 立即更新字幕顯示
+        if self.player_video.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.on_position_changed(self.player_video.position())
+        elif self.segments:
+            # 如果沒在播放，也要更新一下字幕顯示
+            self.on_position_changed(0)
+
+    def toggle_subtitle_zh(self, checked):
+        """切換中文字幕"""
+        self.show_subtitle_zh = checked
+        self.btn_subtitle_zh.setText("中 ✓" if checked else "中 ✗")
+        # 立即更新字幕顯示
+        if self.player_video.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.on_position_changed(self.player_video.position())
+        elif self.segments:
+            # 如果沒在播放，也要更新一下字幕顯示
+            self.on_position_changed(0)
 
     # --- 影片進度條相關 ---
     def on_duration_changed(self, duration):
@@ -509,12 +584,26 @@ class LanguagePlayer(QMainWindow):
                             zh_html_parts.append(f"<span style='color: #DDDDDD;'>{char}</span>")
                 final_html_zh = "".join(zh_html_parts)
 
-                self.lbl_en.setText(f"<div style='text-align: center;'>{final_html_en}</div>")
-                self.lbl_zh.setText(f"<div style='text-align: center;'>{final_html_zh}</div>")
+                if self.show_subtitle_en:
+                    self.lbl_en.setText(f"<div style='text-align: center;'>{final_html_en}</div>")
+                else:
+                    self.lbl_en.setText("")
+                
+                if self.show_subtitle_zh:
+                    self.lbl_zh.setText(f"<div style='text-align: center;'>{final_html_zh}</div>")
+                else:
+                    self.lbl_zh.setText("")
                 break
         
         if not found_segment:
             pass
+    
+    def update_subtitle_visibility(self):
+        """根據設定更新字幕可見性"""
+        if not self.show_subtitle_en:
+            self.lbl_en.setText("")
+        if not self.show_subtitle_zh:
+            self.lbl_zh.setText("")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

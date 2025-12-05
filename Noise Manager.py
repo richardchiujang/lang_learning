@@ -47,10 +47,43 @@ def generate_noise(color, duration_sec=60, sample_rate=44100):
     wavfile.write(output_path, sample_rate, data)
     print(f"✅ 已生成: {output_path}")
 
+def convert_mp3_to_wav(mp3_path):
+    """使用 pydub 轉換 MP3 為 WAV (需要 ffmpeg)"""
+    try:
+        from pydub import AudioSegment
+        
+        filename = os.path.basename(mp3_path)
+        base_name = os.path.splitext(filename)[0]
+        wav_path = os.path.join(NOISE_DIR, f"{base_name}.wav")
+        
+        if os.path.exists(wav_path):
+            print(f"⏭️ 跳過: {base_name}.wav 已存在")
+            return wav_path
+        
+        print(f"🔄 轉換中: {filename} → {base_name}.wav...")
+        audio = AudioSegment.from_mp3(mp3_path)
+        audio.export(wav_path, format="wav")
+        print(f"✅ 已轉換: {wav_path}")
+        return wav_path
+    except ImportError:
+        print(f"⚠️ 跳過: 需要安裝 pydub (pip install pydub)")
+        return None
+    except Exception as e:
+        print(f"❌ 轉換失敗 {filename}: {e}")
+        return None
+
 def check_downloaded_files():
-    """檢查使用者是否已經放入了 MP3 或 WAV"""
+    """檢查使用者是否已經放入了 MP3 或 WAV，並轉換 MP3 為 WAV"""
     # 修改：同時偵測 .mp3 和 .wav (不分大小寫)
     files = [f for f in os.listdir(NOISE_DIR) if f.lower().endswith(('.mp3', '.wav'))]
+    
+    # 轉換 MP3 為 WAV
+    mp3_files = [f for f in files if f.lower().endswith('.mp3')]
+    if mp3_files:
+        print(f"\n🎵 偵測到 {len(mp3_files)} 個 MP3 檔案，正在轉換為 WAV...")
+        for mp3_file in mp3_files:
+            mp3_path = os.path.join(NOISE_DIR, mp3_file)
+            convert_mp3_to_wav(mp3_path)
     
     if not files:
         print(f"\n⚠️ 提示: {NOISE_DIR} 資料夾是空的！")
