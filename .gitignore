@@ -45,5 +45,10 @@ temp_downloads/
 *.zip
 *.exe
 eesktop_player.py
+KEY.txt
 GEMINI_API_KEY.txt
 noises/
+*.mp4
+*.wav
+*.mp3
+

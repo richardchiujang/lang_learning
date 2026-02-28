@@ -1,0 +1,9 @@
+PySide6
+numpy
+scipy
+pydub
+openai-whisper
+ffmpeg-python
+yt-dlp
+google-generativeai
+pyinstaller

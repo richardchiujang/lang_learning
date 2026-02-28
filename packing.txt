@@ -1,0 +1,1 @@
+D:/anaconda3/Scripts/conda.exe run -p D:\conda_envs\lang_learn pyinstaller --clean desktop_player.spec ; xcopy /E /I /Y app_assets dist\app_assets ; xcopy /E /I /Y noises dist\noises ; echo "打包完成"
