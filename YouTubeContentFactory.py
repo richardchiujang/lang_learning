@@ -92,8 +92,13 @@ class YouTubeContentFactory:
             model_size: Whisper 模型大小
         """
         print(f"📡 正在載入 Whisper 模型 ({model_size})...")
-        self.whisper_model = whisper.load_model(model_size)
-        
+        self.whisper_model = None
+
+        def _load_whisper_model(self):
+            if self.whisper_model is None:
+                import whisper
+                self.whisper_model = whisper.load_model(self.model_size)
+            return self.whisper_model
         # 選擇並設定 AI 模型
         if model_name not in MODEL_CONFIG:
             print(f"⚠️  模型 '{model_name}' 未找到，使用預設值: 'Gemini 2.0 Flash Lite'")
